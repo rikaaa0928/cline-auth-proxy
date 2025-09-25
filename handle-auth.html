@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Processing Authentication...</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
+        .container { text-align: center; padding: 40px; background-color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #1c1e21; }
+        p { color: #606770; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+    <!-- Import Firebase JS SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 id="status-title">Processing...</h1>
+        <p id="status-message">Please wait while we finalize your authentication.</p>
+    </div>
+
+    <script>
+        // This configuration is public and safe to be in client-side code.
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyC5rx59Xt8UgwdU3PCfzUF7vCwmp9-K2vk",
+            authDomain: "cline-prod.firebaseapp.com",
+            projectId: "cline-prod",
+        };
+
+        async function processAuth() {
+            const statusTitle = document.getElementById('status-title');
+            const statusMessage = document.getElementById('status-message');
+
+            try {
+                // 1. Initialize Firebase
+                const app = firebase.initializeApp(FIREBASE_CONFIG);
+                const auth = firebase.auth(app);
+
+                // 2. Get the temporary OAuth credential from the URL
+                const params = new URLSearchParams(window.location.search);
+                const oauthAccessToken = params.get('idToken');
+                const provider = params.get('provider');
+
+                if (!oauthAccessToken || !provider) {
+                    throw new Error('OAuth credential token or provider not found in URL.');
+                }
+
+                // 3. Create the correct Firebase credential object
+                let credential;
+                if (provider === 'google') {
+                    credential = firebase.auth.GoogleAuthProvider.credential(oauthAccessToken);
+                } else if (provider === 'github') {
+                    credential = firebase.auth.GithubAuthProvider.credential(oauthAccessToken);
+                } else {
+                    throw new Error(`Unsupported provider: ${provider}`);
+                }
+
+                // 4. Sign in to Firebase to get the user credential, which contains the refresh token
+                const userCredential = await auth.signInWithCredential(credential);
+                const refreshToken = userCredential.user.refreshToken;
+
+                if (!refreshToken) {
+                    throw new Error("Failed to obtain a refresh token from Firebase.");
+                }
+
+                // 5. POST the long-lived refreshToken to our Rust backend
+                const response = await fetch('/callback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        // The key is now 'refreshToken' to be explicit
+                        refreshToken: refreshToken,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to communicate with the auth service backend.');
+                }
+
+                statusTitle.textContent = 'Authentication Successful!';
+                statusTitle.className = 'success';
+                statusMessage.textContent = 'You can now close this window. The auth service is ready.';
+                
+            } catch (error) {
+                statusTitle.textContent = 'Authentication Failed';
+                statusTitle.className = 'error';
+                statusMessage.textContent = error.message || 'An unknown error occurred.';
+                console.error('Auth processing error:', error);
+            }
+        }
+
+        window.onload = processAuth;
+    </script>
+</body>
+</html>

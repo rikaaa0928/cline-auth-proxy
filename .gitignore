@@ -1,0 +1,5 @@
+# Ignore the auth state file
+auth_state.json
+
+# Ignore build artifacts
+/target
