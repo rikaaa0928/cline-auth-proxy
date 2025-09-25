@@ -1,14 +1,27 @@
-# Use a minimal, secure base image
-FROM debian:bullseye-slim
+# Stage 1: Prepare the filesystem structure
+FROM debian:bullseye-slim as preparer
 
-# This Dockerfile expects the binary to be in the build context at './binary'
-# and the html file at './handle-auth.html'
-COPY ./binary /usr/local/bin/cline-auth-service
-COPY ./handle-auth.html /app/handle-auth.html
-
-# Create a directory for auth state
+# Create the necessary directories and copy static assets
 WORKDIR /app
 RUN mkdir -p /app/data
+COPY ./handle-auth.html /app/handle-auth.html
+
+
+# Stage 2: Create the final, minimal image
+FROM gcr.io/distroless/static-debian12
+
+# This Dockerfile expects binaries in the build context at './binary-amd64' and './binary-arm64'
+# Docker's buildx will automatically set TARGETARCH to 'amd64' or 'arm64' during the build
+ARG TARGETARCH
+
+# Copy the pre-compiled static binary for the target architecture
+COPY ./binary-${TARGETARCH} /usr/local/bin/cline-auth-service
+
+# Copy the filesystem structure and assets from the preparer stage
+COPY --from=preparer /app /app
+
+# Set the working directory
+WORKDIR /app
 
 # Expose the port the app runs on
 EXPOSE 8888
