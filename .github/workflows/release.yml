@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-binaries:
+    name: Build for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - { target: 'x86_64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-proxy-x86_64-linux-gnu' }
+          - { target: 'aarch64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-proxy-aarch64-linux-gnu' }
+          - { target: 'x86_64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-proxy-x86_64-linux-musl' }
+          - { target: 'aarch64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-proxy-aarch64-linux-musl' }
+          - { target: 'x86_64-pc-windows-gnu', os: 'windows-latest', name: 'cline-auth-proxy-x86_64-windows.exe' }
+          - { target: 'x86_64-apple-darwin', os: 'macos-latest', name: 'cline-auth-proxy-x86_64-darwin' }
+          - { target: 'aarch64-apple-darwin', os: 'macos-latest', name: 'cline-auth-proxy-aarch64-darwin' }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Install dependencies for cross-compilation (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          RUSTFLAGS: ${{ contains(matrix.target, 'musl') && '-C target-feature=+crt-static' || '' }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          src_path="target/${{ matrix.target }}/release/cline-auth-proxy"
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            src_path+=".exe"
+          fi
+          mv "$src_path" "artifacts/${{ matrix.name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.name }}
+          path: artifacts/${{ matrix.name }}
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build-binaries
+    permissions:
+      contents: write
+    steps:
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: release
+
+      - name: Move binaries to a single directory
+        run: |
+          mkdir -p release-final
+          find release -type f -exec mv {} release-final/ \;
+
+      - name: Create Release and Upload Binaries
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-final/*
+          body: "Automated release for ${{ github.ref }}"
+
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    needs: create-release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}

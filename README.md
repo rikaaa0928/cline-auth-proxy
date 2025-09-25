@@ -106,3 +106,5 @@ This mode is ideal for production or isolated environments.
 ## License
 
 This project is provided as-is. Please adapt the license to your needs.
+
+
