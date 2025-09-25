@@ -95,6 +95,12 @@ jobs:
           - { arch: 'amd64', artifact_name: 'cline-auth-service-x86_64-linux-gnu' }
           - { arch: 'arm64', artifact_name: 'cline-auth-service-aarch64-linux-gnu' }
     steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Checkout code
         uses: actions/checkout@v4
 
