@@ -12,13 +12,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - { target: 'x86_64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-proxy-x86_64-linux-gnu' }
-          - { target: 'aarch64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-proxy-aarch64-linux-gnu' }
-          - { target: 'x86_64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-proxy-x86_64-linux-musl' }
-          - { target: 'aarch64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-proxy-aarch64-linux-musl' }
-          - { target: 'x86_64-pc-windows-gnu', os: 'windows-latest', name: 'cline-auth-proxy-x86_64-windows.exe' }
-          - { target: 'x86_64-apple-darwin', os: 'macos-latest', name: 'cline-auth-proxy-x86_64-darwin' }
-          - { target: 'aarch64-apple-darwin', os: 'macos-latest', name: 'cline-auth-proxy-aarch64-darwin' }
+          - { target: 'x86_64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-service-x86_64-linux-gnu' }
+          - { target: 'aarch64-unknown-linux-gnu', os: 'ubuntu-latest', name: 'cline-auth-service-aarch64-linux-gnu' }
+          - { target: 'x86_64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-service-x86_64-linux-musl' }
+          - { target: 'aarch64-unknown-linux-musl', os: 'ubuntu-latest', name: 'cline-auth-service-aarch64-linux-musl' }
+          - { target: 'x86_64-pc-windows-gnu', os: 'windows-latest', name: 'cline-auth-service-x86_64-windows.exe' }
+          - { target: 'aarch64-pc-windows-msvc', os: 'windows-latest', name: 'cline-auth-service-aarch64-windows.exe' }
+          - { target: 'x86_64-apple-darwin', os: 'macos-latest', name: 'cline-auth-service-x86_64-darwin' }
+          - { target: 'aarch64-apple-darwin', os: 'macos-latest', name: 'cline-auth-service-aarch64-darwin' }
 
     steps:
       - name: Checkout code
@@ -48,7 +49,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          src_path="target/${{ matrix.target }}/release/cline-auth-proxy"
+          src_path="target/${{ matrix.target }}/release/cline-auth-service"
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             src_path+=".exe"
           fi

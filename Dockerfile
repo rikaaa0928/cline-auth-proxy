@@ -1,6 +1,6 @@
 # ---- Stage 1: Build ----
 # Use the official Rust image as a builder
-FROM rust:1.79 as builder
+FROM rust:1.90 as builder
 
 # Create a new empty shell project
 WORKDIR /usr/src/app
