@@ -1,0 +1,22 @@
+# Use a minimal, secure base image
+FROM debian:bullseye-slim
+
+# This Dockerfile expects the binary to be in the build context at './binary'
+# and the html file at './handle-auth.html'
+COPY ./binary /usr/local/bin/cline-auth-service
+COPY ./handle-auth.html /app/handle-auth.html
+
+# Create a directory for auth state
+WORKDIR /app
+RUN mkdir -p /app/data
+
+# Expose the port the app runs on
+EXPOSE 8888
+
+# Set environment variables
+ENV CONTAINER_MODE=true
+ENV AUTH_STATE_DIR=/app/data
+ENV HOST_BINDING=0.0.0.0
+
+# Set the entrypoint
+CMD ["cline-auth-service"]
