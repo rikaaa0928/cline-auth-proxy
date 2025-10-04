@@ -3,3 +3,6 @@ auth_state.json
 
 # Ignore build artifacts
 /target
+
+.idea
+.vscode
